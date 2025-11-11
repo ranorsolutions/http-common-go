@@ -1,4 +1,4 @@
-module github.com/ranrosolutions/http-common-go
+module github.com/ranorsolutions/http-common-go
 
 go 1.19
 
