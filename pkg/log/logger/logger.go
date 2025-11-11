@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/dot0s/http-common-go/pkg/log/formatter"
 	"github.com/gin-gonic/gin"
+	"github.com/ranorsolutions/http-common-go/pkg/log/formatter"
 	"github.com/sirupsen/logrus"
 )
 
