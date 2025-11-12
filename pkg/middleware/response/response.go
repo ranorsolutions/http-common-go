@@ -1,34 +1,55 @@
+// Package response provides simple helpers for writing standardized JSON HTTP responses.
 package response
 
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
-type (
-	// Response -- HTTP JSON Response Schema
-	Response struct {
-		Status  int         `json:"status"`
-		Message string      `json:"message"`
-		Content interface{} `json:"content"`
-	}
+// Response defines the standard JSON response envelope.
+type Response struct {
+	Status  int         `json:"status"`
+	Message string      `json:"message"`
+	Content interface{} `json:"content"`
+}
 
-	// PaginatedResponse -- Paginated JSON Response Schema
-	PaginatedResponse struct {
-		Count    int         `json:"count"`
-		Next     string      `json:"next"`
-		Previous string      `json:"previous"`
-		Results  interface{} `json:"results"`
-	}
+// ResponseLogger wraps gin.ResponseWriter to capture status codes
+// while preserving full compatibility with Gin's writer interface.
+type ResponseLogger struct {
+	gin.ResponseWriter
+	statusCode int
+}
 
-	// ResponseLogger -- Logging Wrapped HTTP Writer
-	ResponseLogger struct {
-		http.ResponseWriter
-		statusCode int
+// NewWriter wraps a gin.ResponseWriter for logging and status tracking.
+func NewWriter(w gin.ResponseWriter) *ResponseLogger {
+	return &ResponseLogger{
+		ResponseWriter: w,
+		statusCode:     http.StatusOK,
 	}
-)
+}
 
-// NewResponse -- The Response Struct Factory Function
+// WriteHeader records and forwards the status code.
+func (w *ResponseLogger) WriteHeader(code int) {
+	w.statusCode = code
+	w.ResponseWriter.WriteHeader(code)
+}
+
+// Status returns the most recently written HTTP status code.
+func (w *ResponseLogger) Status() int {
+	return w.statusCode
+}
+
+// PaginatedResponse defines the schema for paginated API results.
+type PaginatedResponse struct {
+	Count    int         `json:"count"`
+	Next     string      `json:"next"`
+	Previous string      `json:"previous"`
+	Results  interface{} `json:"results"`
+}
+
+// NewResponse creates a simple JSON response envelope.
 func NewResponse(status int, message string, content interface{}) *Response {
 	return &Response{
 		Status:  status,
@@ -37,7 +58,7 @@ func NewResponse(status int, message string, content interface{}) *Response {
 	}
 }
 
-// NewPaginatedResponse -- The Response Struct Factory Function
+// NewPaginatedResponse creates a paginated JSON response envelope.
 func NewPaginatedResponse(status, count int, message, next, prev string, results interface{}) *Response {
 	return &Response{
 		Status:  status,
@@ -51,34 +72,9 @@ func NewPaginatedResponse(status, count int, message, next, prev string, results
 	}
 }
 
-// ResponseWriter -- Writes results to the http.ResponseWriter object
-func ResponseWriter(res http.ResponseWriter, statusCode int, message string, data interface{}) error {
-	// Set the HTTP Status Code
-	res.WriteHeader(statusCode)
-
-	// Set the CORS Headers
-	res.Header().Set("Access-Control-Allow-Origin", "*")
-
-	// Apply the Model factory funciton to set the results
-	results := NewResponse(statusCode, message, data)
-
-	// Encode the results into the response
-	err := json.NewEncoder(res).Encode(results)
-
-	// Catch any errors
-	return err
-}
-
-// NewWriter -- Applies the logger to the response writer
-func NewWriter(w http.ResponseWriter) *ResponseLogger {
-	return &ResponseLogger{w, http.StatusOK}
-}
-
-// WriteHeader -- Method to set the HTTP status to the header and logger
-func (w *ResponseLogger) WriteHeader(code int) {
-	// Apply the HTTP status to the wrapped writer
-	w.statusCode = code
-
-	// Apply the HTTP status to the response
-	w.ResponseWriter.WriteHeader(code)
+// WriteJSON writes a JSON response to the http.ResponseWriter.
+func WriteJSON(w http.ResponseWriter, statusCode int, message string, data interface{}) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	return json.NewEncoder(w).Encode(NewResponse(statusCode, message, data))
 }
